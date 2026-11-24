@@ -1,133 +1,71 @@
-"""
-Page Replacement Simulator (FIFO, LRU, Optimal)
-Operating Systems (1BAI304) - AAT, Problem Statement 7
-"""
+﻿# Simple FIFO Page Replacement Program
+# Input: page reference string and number of frames
+# Output: step-by-step page replacement, total page faults, and efficiency
 
-from collections import deque
-
-
-def fifo(pages, frame_count):
+def fifo_page_replacement(pages, frame_count):
     frames = []
-    queue = deque()          # arrival order of pages in memory
-    steps, faults = [], 0
+    queue = []
+    page_faults = 0
+    steps = []
+
     for page in pages:
-        replaced = None
         if page in frames:
-            fault = False
+            steps.append((page, frames.copy(), "HIT", "-"))
         else:
-            fault = True
-            faults += 1
+            page_faults += 1
             if len(frames) < frame_count:
                 frames.append(page)
+                queue.append(page)
+                steps.append((page, frames.copy(), "FAULT", "-"))
             else:
-                replaced = queue.popleft()          # oldest page out
-                frames[frames.index(replaced)] = page
-            queue.append(page)
-        steps.append((page, list(frames), fault, replaced))
-    return steps, faults
+                replaced_page = queue.pop(0)
+                index = frames.index(replaced_page)
+                frames[index] = page
+                queue.append(page)
+                steps.append((page, frames.copy(), "FAULT", replaced_page))
 
-
-def lru(pages, frame_count):
-    frames = []
-    last_used = {}           # page -> index of most recent use
-    steps, faults = [], 0
-    for i, page in enumerate(pages):
-        replaced = None
-        if page in frames:
-            fault = False
-        else:
-            fault = True
-            faults += 1
-            if len(frames) < frame_count:
-                frames.append(page)
-            else:
-                replaced = min(frames, key=lambda p: last_used[p])  # least recently used
-                frames[frames.index(replaced)] = page
-        last_used[page] = i
-        steps.append((page, list(frames), fault, replaced))
-    return steps, faults
-
-
-def optimal(pages, frame_count):
-    frames = []
-    steps, faults = [], 0
-    for i, page in enumerate(pages):
-        replaced = None
-        if page in frames:
-            fault = False
-        else:
-            fault = True
-            faults += 1
-            if len(frames) < frame_count:
-                frames.append(page)
-            else:
-                # choose the page whose next use is farthest in the future
-                def next_use(p):
-                    future = pages[i + 1:]
-                    return future.index(p) if p in future else float("inf")
-                replaced = max(frames, key=next_use)
-                frames[frames.index(replaced)] = page
-        steps.append((page, list(frames), fault, replaced))
-    return steps, faults
-
-
-def display(name, pages, frame_count, steps, faults):
-    n = len(pages)
-    hits = n - faults
-    print("=" * 62)
-    print(f" {name} PAGE REPLACEMENT   (frames = {frame_count})")
-    print("=" * 62)
-    print(f"{'Step':<5}{'Page':<6}{'Frames':<20}{'Result':<8}{'Replaced'}")
-    print("-" * 62)
-    for i, (page, frames, fault, replaced) in enumerate(steps, 1):
-        shown = " ".join(f"{f:>2}" for f in frames) + "  " * (frame_count - len(frames))
-        res = "FAULT" if fault else "HIT"
-        rep = str(replaced) if replaced is not None else "-"
-        print(f"{i:<5}{page:<6}{shown:<20}{res:<8}{rep}")
-    print("-" * 62)
-    print(f"Total page requests : {n}")
-    print(f"Page faults         : {faults}")
-    print(f"Page hits           : {hits}")
-    print(f"Page fault rate     : {faults / n * 100:.2f}%")
-    print(f"Hit ratio (efficiency): {hits / n * 100:.2f}%")
-    print()
+    return steps, page_faults
 
 
 def main():
-    print("PAGE REPLACEMENT ALGORITHM SIMULATOR")
-    raw = input("Enter page reference string (space separated)\n"
-                "[press Enter for default]: ").strip()
-    if raw:
-        pages = list(map(int, raw.split()))
+    print("FIFO Page Replacement Algorithm")
+    print()
+
+    raw_pages = input("Enter page reference string (space separated): ").strip()
+    if raw_pages == "":
+        pages = [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2]
     else:
-        pages = [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1]
-    raw = input("Enter number of frames [default 3]: ").strip()
-    frame_count = int(raw) if raw else 3
+        pages = [int(x) for x in raw_pages.split()]
+
+    raw_frames = input("Enter number of frames: ").strip()
+    if raw_frames == "":
+        frame_count = 3
+    else:
+        frame_count = int(raw_frames)
+
+    steps, page_faults = fifo_page_replacement(pages, frame_count)
+    total_pages = len(pages)
+    page_hits = total_pages - page_faults
+    hit_ratio = (page_hits / total_pages) * 100
+    fault_rate = (page_faults / total_pages) * 100
+
     print()
-    print("Page reference string:", *pages)
-    print("Number of frames     :", frame_count)
+    print("Page Reference String:", pages)
+    print("Number of Frames:", frame_count)
     print()
+    print(f"{'Step':<6}{'Page':<8}{'Frames':<20}{'Result':<10}{'Replaced'}")
+    print("-" * 55)
 
-    results = {}
-    for name, algo in (("FIFO", fifo), ("LRU", lru), ("OPTIMAL", optimal)):
-        steps, faults = algo(pages, frame_count)
-        display(name, pages, frame_count, steps, faults)
-        results[name] = faults
+    for i, (page, frame_state, result, replaced) in enumerate(steps, start=1):
+        frame_text = " ".join(str(p) for p in frame_state)
+        print(f"{i:<6}{page:<8}{frame_text:<20}{result:<10}{replaced}")
 
-    n = len(pages)
-    print("=" * 62)
-    print(" COMPARISON SUMMARY")
-    print("=" * 62)
-    print(f"{'Algorithm':<12}{'Faults':<10}{'Hits':<8}{'Fault rate':<13}{'Hit ratio'}")
-    for name, f in results.items():
-        print(f"{name:<12}{f:<10}{n - f:<8}{f / n * 100:<13.2f}{(n - f) / n * 100:.2f}%")
-    best = min(results, key=results.get)
-    print(f"\nBest performance (fewest faults): {best}")
-
-    print("\nBelady's anomaly check (FIFO) on 1 2 3 4 1 2 5 1 2 3 4 5:")
-    belady = [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5]
-    for fc in (3, 4):
-        print(f"  frames = {fc} -> faults = {fifo(belady, fc)[1]}")
+    print("-" * 55)
+    print("Total Page Requests:", total_pages)
+    print("Total Page Faults:", page_faults)
+    print("Total Page Hits:", page_hits)
+    print(f"Page Fault Rate: {fault_rate:.2f}%")
+    print(f"Hit Ratio (Efficiency): {hit_ratio:.2f}%")
 
 
 if __name__ == "__main__":
