@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Replacement Simulator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <p class="eyebrow">Operating Systems (1BAI304) - AAT Problem 7</p>
+      <h1>Page Replacement Simulator</h1>
+      <p class="subtitle">Simulate FIFO, LRU, and Optimal page replacement. Enter a page reference string and frame count to see hits, faults, replacements, and efficiency.</p>
+    </header>
+
+    <section class="card">
+      <h2>Input</h2>
+      <form method="post" class="input-form">
+        <label class="field">
+          <span>Page reference string</span>
+          <input type="text" name="pages" value="{{ pages_input }}" placeholder="Example: 7 0 1 2 0 3 0 4" required>
+          <small>Enter page numbers separated by spaces or commas.</small>
+        </label>
+        <label class="field field-small">
+          <span>Number of frames</span>
+          <input type="number" name="frames" min="1" value="{{ frames_input }}" required>
+        </label>
+        <button type="submit">Run Simulation</button>
+      </form>
+      {% if error %}
+      <p class="error">{{ error }}</p>
+      {% endif %}
+    </section>
+
+    {% if results %}
+    {% for result in results %}
+    <section class="card">
+      <div class="section-header">
+        <h2>{{ result.name }} Page Replacement</h2>
+        <p>{{ result.total }} requests, {{ result.faults }} faults, {{ result.hits }} hits</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Page</th>
+              <th>Frames</th>
+              <th>Result</th>
+              <th>Replaced</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in result.rows %}
+            <tr class="{{ 'fault' if row.result == 'FAULT' else 'hit' }}">
+              <td>{{ row.step }}</td>
+              <td>{{ row.page }}</td>
+              <td>
+                <div class="frames">
+                  {% for frame in row.frames %}
+                  <span class="frame {% if frame == '-' %}empty{% endif %}">{{ frame }}</span>
+                  {% endfor %}
+                </div>
+              </td>
+              <td><span class="badge {{ 'badge-fault' if row.result == 'FAULT' else 'badge-hit' }}">{{ row.result }}</span></td>
+              <td>{{ row.replaced }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="stat-label">Page faults</span><strong>{{ result.faults }}</strong></div>
+        <div class="stat"><span class="stat-label">Page hits</span><strong>{{ result.hits }}</strong></div>
+        <div class="stat"><span class="stat-label">Fault rate</span><strong>{{ '%.2f'|format(result.fault_rate) }}%</strong></div>
+        <div class="stat"><span class="stat-label">Hit ratio</span><strong>{{ '%.2f'|format(result.hit_ratio) }}%</strong></div>
+      </div>
+    </section>
+    {% endfor %}
+
+    <section class="card">
+      <h2>Comparison Summary</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Faults</th>
+              <th>Hits</th>
+              <th>Fault Rate</th>
+              <th>Hit Ratio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in comparison %}
+            <tr class="{{ 'best' if item.name == best_algorithm else '' }}">
+              <td>{{ item.name }}{% if item.name == best_algorithm %} <span class="best-label">Best</span>{% endif %}</td>
+              <td>{{ item.faults }}</td>
+              <td>{{ item.hits }}</td>
+              <td>{{ '%.2f'|format(item.fault_rate) }}%</td>
+              <td>{{ '%.2f'|format(item.hit_ratio) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="summary-note">Best performance (fewest faults): <strong>{{ best_algorithm }}</strong></p>
+    </section>
+
+    <section class="card">
+      <h2>Belady's Anomaly Check (FIFO)</h2>
+      <p class="summary-note">Reference string: {{ belady_pages | join(' ') }}</p>
+      <div class="table-wrap">
+        <table class="small-table">
+          <thead>
+            <tr>
+              <th>Frames</th>
+              <th>FIFO Faults</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in belady_results %}
+            <tr>
+              <td>{{ item.frames }}</td>
+              <td>{{ item.faults }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if belady_results|length == 2 and belady_results[1].faults > belady_results[0].faults %}
+      <p class="summary-note">More frames produced more faults here, which demonstrates Belady's anomaly.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>
